@@ -737,6 +737,11 @@
         ctx.drawImage(img, 80, 1000, artW, artH);
       } catch { /* decorative art is optional */ }
 
+      ctx.fillStyle = 'rgba(232,200,74,0.6)';
+      ctx.font = 'italic 400 28px Arial';
+      ctx.fillText('With thanks to The Beatles,', W / 2, 1530);
+      ctx.fillText("who created the genes embedded in Monohrom's DNA.", W / 2, 1570);
+
       ctx.fillStyle = 'rgba(232,200,74,0.85)';
       ctx.font = '700 34px Arial';
       ctx.fillText('Play at oskarmarko.github.io/the-beatles-guesser', W / 2, 1780);
