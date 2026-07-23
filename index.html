@@ -450,6 +450,23 @@
     }
     .play-again-btn:hover { background: #f5d96a; }
 
+    .share-btn {
+      width: 100%;
+      padding: 12px;
+      background: transparent;
+      border: 1.5px solid #e8c84a;
+      color: #e8c84a;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .share-btn:hover { background: rgba(232,200,74,0.12); }
+    .share-btn:disabled { opacity: 0.5; cursor: default; }
+
     .thanks-note {
       margin-top: 2px;
       font-size: 0.72rem;
@@ -554,6 +571,7 @@
         <div id="triviaText">Loading trivia…</div>
       </div>
       <button class="play-again-btn" id="playAgainBtn">Play Again</button>
+      <button class="share-btn" id="shareBtn">Share Results</button>
       <div class="thanks-note">With thanks to The Beatles, who created the genes embedded in Monohrom's DNA.</div>
 
       <div class="social-row">
@@ -598,6 +616,7 @@
     const triviaBox      = document.getElementById('triviaBox');
     const triviaText     = document.getElementById('triviaText');
     const playAgainBtn   = document.getElementById('playAgainBtn');
+    const shareBtn        = document.getElementById('shareBtn');
 
     const MAX_ROUNDS = 5;
 
@@ -672,6 +691,77 @@
         ${fig(508,  '#2a1a08','#0a0400', false, true)}
         ${fig(692,  '#3a0a10','#0a0400', false, true)}
       </svg>`;
+    }
+
+    // ── Share results as an IG-Stories-shaped image ─────────────────
+    async function shareResults() {
+      const W = 1080, H = 1920;
+      const canvas = document.createElement('canvas');
+      canvas.width = W; canvas.height = H;
+      const ctx = canvas.getContext('2d');
+
+      const grad = ctx.createLinearGradient(0, 0, W, H);
+      grad.addColorStop(0, '#0d0d1a');
+      grad.addColorStop(1, '#1a0a2e');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#e8c84a';
+      ctx.font = '900 56px Arial';
+      ctx.fillText('THE BEATLES GUESSER', W / 2, 230);
+
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.font = '400 32px Arial';
+      ctx.fillText('Can you name the song in one second?', W / 2, 285);
+
+      ctx.fillStyle = '#e8c84a';
+      ctx.font = '900 260px Arial';
+      ctx.fillText(`${correct}/${MAX_ROUNDS}`, W / 2, 750);
+
+      ctx.fillStyle = 'rgba(255,255,255,0.75)';
+      ctx.font = '400 38px Arial';
+      ctx.fillText('songs guessed correctly', W / 2, 815);
+
+      try {
+        const svgStr = generateScoreSVG(correct);
+        const svgData = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgStr);
+        const img = new Image();
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+          img.src = svgData;
+        });
+        const artW = W - 160;
+        const artH = artW * (360 / 800);
+        ctx.drawImage(img, 80, 1000, artW, artH);
+      } catch { /* decorative art is optional */ }
+
+      ctx.fillStyle = 'rgba(232,200,74,0.85)';
+      ctx.font = '700 34px Arial';
+      ctx.fillText('Play at oskarmarko.github.io/the-beatles-guesser', W / 2, 1780);
+
+      canvas.toBlob(async (blob) => {
+        if (!blob) return;
+        const file = new File([blob], 'beatles-guesser-score.png', { type: 'image/png' });
+        const shareText = `I scored ${correct}/${MAX_ROUNDS} on The Beatles Guesser!`;
+
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({ files: [file], title: 'The Beatles Guesser', text: shareText });
+          } catch { /* user cancelled the share sheet */ }
+        } else {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'beatles-guesser-score.png';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          alert('Image saved — open Instagram and add it to your Story!');
+        }
+      }, 'image/png');
     }
 
     // ── Beatles trivia database ────────────────────────────────────
@@ -1072,6 +1162,17 @@
     nextBtn.addEventListener('click', () => { played >= MAX_ROUNDS ? showFinalScreen() : pickSong(); });
 
     playAgainBtn.addEventListener('click', resetGame);
+    shareBtn.addEventListener('click', async () => {
+      shareBtn.disabled = true;
+      const originalText = shareBtn.textContent;
+      shareBtn.textContent = 'Preparing…';
+      try {
+        await shareResults();
+      } finally {
+        shareBtn.disabled = false;
+        shareBtn.textContent = originalText;
+      }
+    });
 
     loadSongs();
   </script>
